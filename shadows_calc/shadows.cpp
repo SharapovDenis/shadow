@@ -1,6 +1,7 @@
 #include <iostream>
 #include <cmath>
 #include <utility>
+#include <ctime>
 
 double to_rad(double x) {
     return x * M_PI / 180;
@@ -11,8 +12,13 @@ double to_deg(double x) {
 }
 
 std::pair<double, double>
-solar_coord(double latit = 40, double longit = -105, int date = 40179, double local_time = 0.5, double time_zone = -7) {
-    double jul_day = date + 2415018.5 + local_time - time_zone / 24;
+solar_coord(double latit, double longit, int year, int mon, int mday, int hour, int min, int sec, double time_zone) {
+    int a = (14 - mon) / 12;
+    int y = year + 4800 - a;
+    int m = mon + 12 * a - 3;
+    int jul_day_n = mday + (153 * m + 2) / 5 + 365 * y + y / 4 - y / 100 + y / 400 - 32045;
+    double jul_day =
+            jul_day_n + (hour - 12) / (double) 24 + min / (double) 1440 + sec / (double) 86400 - time_zone / 24;
     double jul_cen = (jul_day - 2451545) / 36525;
 
     double mean_long = fmod(280.46646 + jul_cen * (36000.76983 + jul_cen * 0.0003032), 360);
@@ -35,6 +41,7 @@ solar_coord(double latit = 40, double longit = -105, int date = 40179, double lo
                                    4 * eccent * var_y * sin(to_rad(mean_anom)) * cos(2 * to_rad(mean_long)) -
                                    0.5 * var_y * var_y * sin(4 * to_rad(mean_long)) -
                                    1.25 * eccent * eccent * sin(2 * to_rad(mean_anom)));
+    double local_time = ((sec / (double) 60 + min) / 60 + hour) / 24;
     double true_solar_time = fmod(local_time * 1440 + eq_of_time + 4 * longit - 60 * time_zone, 1440);
     double hour_angle;
     if (true_solar_time / 4 < 0)
@@ -69,5 +76,15 @@ solar_coord(double latit = 40, double longit = -105, int date = 40179, double lo
 }
 
 int main() {
-    printf("Solar elevation = %f \nSolar azimuth = %f\n", solar_coord().first, solar_coord().second);
+    double latit = 55.929517;
+    double longit = 37.5212019;
+    double time_zone = 3;
+
+    time_t now = time(nullptr);
+    tm *ltm = localtime(&now);
+
+    std::pair<double, double> coord = solar_coord(latit, longit, 1900 + ltm->tm_year, 1 + ltm->tm_mon, ltm->tm_mday,
+                                                  ltm->tm_hour, ltm->tm_min, ltm->tm_sec, time_zone);
+
+    printf("Solar elevation = %f \nSolar azimuth = %f\n", coord.first, coord.second);
 }
