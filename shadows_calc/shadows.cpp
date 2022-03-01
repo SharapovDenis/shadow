@@ -2,6 +2,7 @@
 #include <cmath>
 #include <utility>
 #include <ctime>
+#include <vector>
 
 double to_rad(double x) {
     return x * M_PI / 180;
@@ -72,10 +73,10 @@ solar_coord(double latit, double longit, int year, int mon, int mday, int hour, 
         azim = fmod(540 - to_deg(acos(((sin(to_rad(latit)) * cos(to_rad(zenith))) - sin(to_rad(dec))) /
                                       (cos(to_rad(latit)) * sin(to_rad(zenith))))), 360);
 
-    return std::make_pair(elev_corr, azim);
+    return {elev_corr, azim};
 }
 
-int main() {
+void solar_coord_test() {
     double latit = 55.929517;
     double longit = 37.5212019;
     double time_zone = 3;
@@ -87,4 +88,8 @@ int main() {
                                                   ltm->tm_hour, ltm->tm_min, ltm->tm_sec, time_zone);
 
     printf("Solar elevation = %f \nSolar azimuth = %f\n", coord.first, coord.second);
+}
+
+int main() {
+
 }
