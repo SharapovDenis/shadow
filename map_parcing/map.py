@@ -11,9 +11,9 @@ result = api.query(f"""
                    
 """)
 
-list_of_ways = [0]*5
 table_of_ways = []
 
+# проблема с оперативкой может быть, т. к. может быть слишком большой граф
 for way in result.ways:
     list_of_ways = [0]*5
     list_of_ways[0] = way.id
