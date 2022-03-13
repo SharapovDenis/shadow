@@ -40,7 +40,7 @@ CREATE TABLE node_tags (
     tag_val VARCHAR (255) NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (node_id) REFERENCES nodes(id)
-    );
+);
 
 CREATE TABLE way_tags (
     id      INT8 UNSIGNED NOT NULL,
@@ -49,7 +49,7 @@ CREATE TABLE way_tags (
     tag_val VARCHAR (255) NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (way_id) REFERENCES ways(id)
-    );
+);
 
 CREATE TABLE rel_tags (
     id      INT8 UNSIGNED NOT NULL,
@@ -58,7 +58,7 @@ CREATE TABLE rel_tags (
     tag_val VARCHAR (255) NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (rel_id) REFERENCES relations(id)
-    );
+);
 
 CREATE TABLE members (
     id      INT8 UNSIGNED NOT NULL,
@@ -68,4 +68,4 @@ CREATE TABLE members (
     role    VARCHAR (255) NOT NULL,
     PRIMARY KEY (id),
     FOREIGN KEY (rel_id) REFERENCES relations(id)
-)
+);
