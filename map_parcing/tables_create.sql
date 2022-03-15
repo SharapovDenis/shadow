@@ -1,3 +1,8 @@
+.open shadow.db
+
+DROP TABLE IF EXISTS member_node;
+DROP TABLE IF EXISTS member_way;
+DROP TABLE IF EXISTS member_rel;
 DROP TABLE IF EXISTS node_tags;
 DROP TABLE IF EXISTS way_tags;
 DROP TABLE IF EXISTS rel_tags;
@@ -60,12 +65,35 @@ CREATE TABLE rel_tags (
     FOREIGN KEY (rel_id) REFERENCES relations(id)
 );
 
-CREATE TABLE members (
-    id      INT8 UNSIGNED NOT NULL,
-    rel_id  INT8 UNSIGNED NOT NULL,
-    type    VARCHAR (255) NOT NULL,
-    ref_id  INT8 UNSIGNED NOT NULL,
-    role    VARCHAR (255) NOT NULL,
+CREATE TABLE member_node (
+    [id]               INT8 UNSIGNED NOT NULL,
+    [rel_id]           INT8 UNSIGNED NOT NULL,
+    [type]             VARCHAR (20)  NOT NULL,
+    [ref_to_node]      INT8 UNSIGNED NOT NULL,
+    [role]             VARCHAR (255) NOT NULL,
     PRIMARY KEY (id),
-    FOREIGN KEY (rel_id) REFERENCES relations(id)
+    FOREIGN KEY (rel_id)      REFERENCES relations(id),
+    FOREIGN KEY (ref_to_node) REFERENCES nodes(id)
+);
+
+CREATE TABLE member_way (
+    [id]               INT8 UNSIGNED NOT NULL,
+    [rel_id]           INT8 UNSIGNED NOT NULL,
+    [type]             VARCHAR (20)  NOT NULL,
+    [ref_to_way]       INT8 UNSIGNED NOT NULL,
+    [role]             VARCHAR (255) NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (rel_id)     REFERENCES relations(id),
+    FOREIGN KEY (ref_to_way) REFERENCES ways(id)
+);
+
+CREATE TABLE member_rel (
+    [id]               INT8 UNSIGNED NOT NULL,
+    [rel_id]           INT8 UNSIGNED NOT NULL,
+    [type]             VARCHAR (20)  NOT NULL,
+    [ref_to_rel]      INT8 UNSIGNED  NOT NULL,
+    [role]             VARCHAR (255) NOT NULL,
+    PRIMARY KEY (id),
+    FOREIGN KEY (rel_id)     REFERENCES relations(id),
+    FOREIGN KEY (ref_to_rel) REFERENCES relations(id)
 );
