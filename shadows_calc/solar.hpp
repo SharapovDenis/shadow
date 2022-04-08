@@ -2,7 +2,7 @@
 
 #include <cstdio>
 #include <cmath>
-#include <ctime>
+#include <chrono>
 #include <utility>
 
 /**
@@ -31,6 +31,7 @@ double to_deg(double x) {
  * @param sec [0, 59]
  * @param time_zone in hours
  * @return elevation and azimuth
+ * @see https://gml.noaa.gov/grad/solcalc/
  */
 std::pair<double, double>
 solar_coord(double latit, double longit, int year, int mon, int mday, int hour, int min, int sec, double time_zone) {
@@ -100,9 +101,13 @@ solar_coord(double latit, double longit, int year, int mon, int mday, int hour, 
  * Some test.
  */
 void solar_coord_test() {
+//    using namespace std::chrono;
+
     double latit = (55.7263 + 55.7816) / 2;
     double longit = (37.6503 + 37.7864) / 2;
     double time_zone = 3;
+
+    int y = std::chrono::year;
 
     time_t now = time(nullptr);
     tm *ltm = localtime(&now);

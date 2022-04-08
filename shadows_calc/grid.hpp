@@ -82,6 +82,7 @@ void fill_top_flat_triangle(Grid &grid, iPoint v1, iPoint v2, iPoint v3) {
    * @param v1 first vertex
    * @param v2 second vertex
    * @param v3 third vertex, has the largest y-coordinate
+   * @see http://www.sunshine2k.de/coding/java/TriangleRasterization/TriangleRasterization.html
    */
 void fill_triangle(Grid &grid, iPoint v1, iPoint v2, iPoint v3) {
 

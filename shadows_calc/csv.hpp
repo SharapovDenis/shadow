@@ -78,7 +78,7 @@ void junk_2() {
 
     std::vector<std::vector<std::string>> new_data = {data[0]};
 
-    double height = 3, elev = 5, azim = 90;
+    double height = 3, elev = 10, azim = 122;
     height = height / (2 * M_PI * 6378 * 1000 / 360);
 
     for (int i = 1; i < data.size(); i++) {
