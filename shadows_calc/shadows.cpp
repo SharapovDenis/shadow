@@ -1,5 +1,7 @@
 #include <iostream>
 
+#include <thread>
+
 #include <vector>
 #include <map>
 
@@ -8,8 +10,6 @@
 #include "grid.hpp"
 
 #include <chrono>
-
-auto start = std::chrono::high_resolution_clock::now();
 
 typedef struct node {
     unsigned long long int id;
@@ -69,9 +69,11 @@ std::vector<ways> get_ways() {
  * |
  * | - - - - - - - > x (lon)
  */
-void grid_filling(Grid grid, std::vector<ways> ways_arr, double min_lat, double min_lon, double dlat, double dlon,
-                  double elev, double azim, double height, int n_lon, int n_lat) {
-    for (auto &temp_way: ways_arr) {
+void grid_filling(Grid &grid, std::vector<ways> &ways_arr, double min_lat, double min_lon, double dlat, double dlon,
+                  double elev, double azim, double height, int n_lon, int n_lat, int start_ind, int final_ind) {
+    for (int j = start_ind; j < final_ind; j++) {
+        auto temp_way = ways_arr[j];
+
         double dlat_shadow = (-height * std::stoi(temp_way.tag["levels"]) * cos(to_rad(azim)) / tan(to_rad(elev)));
         double dlon_shadow = (-height * std::stoi(temp_way.tag["levels"]) * sin(to_rad(azim)) / tan(to_rad(elev)));
 
@@ -105,7 +107,13 @@ void grid_filling(Grid grid, std::vector<ways> ways_arr, double min_lat, double 
     }
 }
 
+void test(int &x) {
+    std::cout << x << std::endl;
+}
+
 int main() {
+    auto start = std::chrono::high_resolution_clock::now();
+
     auto ways_arr = get_ways();
 
     double min_lat = 90, min_lon = 180;
@@ -132,7 +140,25 @@ int main() {
 
     Grid grid(n_lon, n_lat);
 
-    grid_filling(grid, ways_arr, min_lat, min_lon, dlat, dlon, elev, azim, height, n_lon, n_lat);
+    int n_threads = 8;
+    std::vector<std::thread> threads;
+
+    for (int i = 0; i < n_threads; i++) {
+        int start_ind = i * (int) ways_arr.size() / n_threads;
+        int final_ind = (i + 1) * (int) ways_arr.size() / n_threads;
+
+        if (i == n_threads - 1)
+            final_ind = (int) ways_arr.size();
+
+        threads.emplace_back(grid_filling, std::ref(grid), std::ref(ways_arr), min_lat, min_lon, dlat, dlon, elev, azim,
+                             height, n_lon, n_lat, start_ind, final_ind);
+    }
+
+    for (auto &th : threads) {
+        th.join();
+    }
+
+//    grid_filling(grid, ways_arr, min_lat, min_lon, dlat, dlon, elev, azim, height, n_lon, n_lat);
 
 //    grid.print_grid();
 
