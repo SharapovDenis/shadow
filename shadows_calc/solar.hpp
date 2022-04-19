@@ -2,7 +2,7 @@
 
 #include <cstdio>
 #include <cmath>
-#include <chrono>
+// #include <chrono>
 #include <utility>
 
 /**
@@ -101,13 +101,11 @@ solar_coord(double latit, double longit, int year, int mon, int mday, int hour, 
  * Some test.
  */
 void solar_coord_test() {
-//    using namespace std::chrono;
+    // TODO use chrono for fun
 
     double latit = (55.7263 + 55.7816) / 2;
     double longit = (37.6503 + 37.7864) / 2;
     double time_zone = 3;
-
-    int y = std::chrono::year;
 
     time_t now = time(nullptr);
     tm *ltm = localtime(&now);

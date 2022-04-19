@@ -1,268 +1,145 @@
 #include <iostream>
-//#include <vector>
+
+#include <vector>
+#include <map>
 
 #include "csv.hpp"
 #include "solar.hpp"
-#include "triangulation.hpp"
 #include "grid.hpp"
 
-#include <algorithm>
-#include <functional>
-#include <utility>
-#include <vector>
-#include <map>
-#include <set>
+#include <chrono>
+
+auto start = std::chrono::high_resolution_clock::now();
+
+typedef struct node {
+    unsigned long long int id;
+    double lat;
+    double lon;
+    std::map<std::string, std::string> tag;
+} nodes;
+
+typedef struct way {
+    unsigned long long int id;
+    std::vector<nodes> seq;
+    std::map<std::string, std::string> tag;
+} ways;
+
+std::vector<ways> get_ways() {
+    auto data = read_csv("output_data.csv");
+
+    way temp_way;
+    node temp_node;
+    std::vector<ways> ways_arr;
+
+    auto last_id = data[1][1];
+    temp_way.id = std::stoi(data[1][1]);
+    temp_way.tag["levels"] = data[1][2];
+    for (int i = 1; i < data.size(); i++) {
+
+        if (data[i][1] != last_id) {
+            ways_arr.push_back(temp_way);
+
+            temp_way = {};
+            temp_way.id = std::stoi(data[i][1]);
+            temp_way.tag["levels"] = data[i][2];
+
+            last_id = data[i][1];
+        }
+
+        temp_node = {};
+        temp_node.id = std::stoi(data[i][1]);
+        temp_node.lat = std::stod(data[i][3]);
+        temp_node.lon = std::stod(data[i][4]);
+
+        temp_way.seq.push_back(temp_node);
+    }
+
+    ways_arr.push_back(temp_way);
+
+    return ways_arr;
+}
 
 /**
- * @see https://cp-algorithms.com/geometry/point-location.html
+ * y (lat)
+ * ^
+ * |
+ * |
+ * |
+ * |
+ * |
+ * | - - - - - - - > x (lon)
  */
-namespace p_loc {
+void grid_filling(Grid grid, std::vector<ways> ways_arr, double min_lat, double min_lon, double dlat, double dlon,
+                  double elev, double azim, double height, int n_lon, int n_lat) {
+    for (auto &temp_way: ways_arr) {
+        double dlat_shadow = (-height * std::stoi(temp_way.tag["levels"]) * cos(to_rad(azim)) / tan(to_rad(elev)));
+        double dlon_shadow = (-height * std::stoi(temp_way.tag["levels"]) * sin(to_rad(azim)) / tan(to_rad(elev)));
 
-    typedef long long ll;
+        int dx_shadow = (int) round(dlat_shadow / dlat);
+        int dy_shadow = (int) round(dlon_shadow / dlon);
 
-    bool ge(const ll &a, const ll &b) { return a >= b; }
-    bool le(const ll &a, const ll &b) { return a <= b; }
-    bool eq(const ll &a, const ll &b) { return a == b; }
-    bool gt(const ll &a, const ll &b) { return a > b; }
-    bool lt(const ll &a, const ll &b) { return a < b; }
-    int sgn(const ll &x) { return le(x, 0) ? eq(x, 0) ? 0 : -1 : 1; }
+        for (int i = 1; i < temp_way.seq.size(); i++) {
+            double lat1 = temp_way.seq[i - 1].lat;
+            double lon1 = temp_way.seq[i - 1].lon;
+            double lat2 = temp_way.seq[i].lat;
+            double lon2 = temp_way.seq[i].lon;
 
-    struct pt {
-        ll x, y;
-        pt() {}
-        pt(ll _x, ll _y) : x(_x), y(_y) {}
-        pt operator-(const pt &a) const { return pt(x - a.x, y - a.y); }
-        ll dot(const pt &a) const { return x * a.x + y * a.y; }
-        ll dot(const pt &a, const pt &b) const { return (a - *this).dot(b - *this); }
-        ll cross(const pt &a) const { return x * a.y - y * a.x; }
-        ll cross(const pt &a, const pt &b) const { return (a - *this).cross(b - *this); }
-        bool operator==(const pt &a) const { return a.x == x && a.y == y; }
-    };
+            int y1 = (int) ((lat1 - min_lat) / dlat);
+            int x1 = (int) ((lon1 - min_lon) / dlon);
+            int y2 = (int) ((lat2 - min_lat) / dlat);
+            int x2 = (int) ((lon2 - min_lon) / dlon);
 
-    struct Edge {
-        pt l, r;
-    };
+            auto marked = grid.plotLine({x1, y1}, {x2, y2});
 
-    bool edge_cmp(Edge *edge1, Edge *edge2) {
-        const pt a = edge1->l, b = edge1->r;
-        const pt c = edge2->l, d = edge2->r;
-        int val = sgn(a.cross(b, c)) + sgn(a.cross(b, d));
-        if (val != 0)
-            return val > 0;
-        val = sgn(c.cross(d, a)) + sgn(c.cross(d, b));
-        return val < 0;
+            for (auto p: marked) {
+                int x_new = p.x + dx_shadow;
+                x_new = std::max(0, x_new);
+                x_new = std::min(x_new, n_lon - 1);
+                int y_new = p.y + dy_shadow;
+                y_new = std::max(0, y_new);
+                y_new = std::min(y_new, n_lat - 1);
+
+                grid.plotLine(p, {x_new, y_new});
+            }
+        }
     }
-
-    enum EventType {
-        DEL = 2, ADD = 3, GET = 1, VERT = 0
-    };
-
-    struct Event {
-        EventType type;
-        int pos;
-
-        bool operator<(const Event &event) const { return type < event.type; }
-    };
-
-    std::vector<Edge *> sweepline(std::vector<Edge *> planar, std::vector<pt> queries) {
-        using pt_type = decltype(pt::x);
-
-        // collect all x-coordinates
-        auto s = std::set<pt_type, std::function<bool(const pt_type &, const pt_type &)>>(lt);
-        for (pt p: queries)
-            s.insert(p.x);
-        for (Edge *e: planar) {
-            s.insert(e->l.x);
-            s.insert(e->r.x);
-        }
-
-        // map all x-coordinates to ids
-        int cid = 0;
-        auto id = std::map<pt_type, int, std::function<bool(const pt_type &, const pt_type &)>>(lt);
-        for (auto x: s)
-            id[x] = cid++;
-
-        // create events
-        auto t = std::set<Edge *, decltype(*edge_cmp)>(edge_cmp);
-        auto vert_cmp = [](const std::pair<pt_type, int> &l, const std::pair<pt_type, int> &r) {
-            if (!eq(l.first, r.first))
-                return lt(l.first, r.first);
-            return l.second < r.second;
-        };
-        auto vert = std::set<std::pair<pt_type, int>, decltype(vert_cmp)>(vert_cmp);
-        std::vector<std::vector<Event>> events(cid);
-        for (int i = 0; i < (int) queries.size(); i++) {
-            int x = id[queries[i].x];
-            events[x].push_back(Event{GET, i});
-        }
-        for (int i = 0; i < (int) planar.size(); i++) {
-            int lx = id[planar[i]->l.x], rx = id[planar[i]->r.x];
-            if (lx > rx) {
-                std::swap(lx, rx);
-                std::swap(planar[i]->l, planar[i]->r);
-            }
-            if (lx == rx) {
-                events[lx].push_back(Event{VERT, i});
-            } else {
-                events[lx].push_back(Event{ADD, i});
-                events[rx].push_back(Event{DEL, i});
-            }
-        }
-
-        // perform sweep line algorithm
-        std::vector<Edge *> ans(queries.size(), nullptr);
-        for (int x = 0; x < cid; x++) {
-            sort(events[x].begin(), events[x].end());
-            vert.clear();
-            for (Event event: events[x]) {
-                if (event.type == DEL) {
-                    t.erase(planar[event.pos]);
-                }
-                if (event.type == VERT) {
-                    vert.insert(std::make_pair(std::min(planar[event.pos]->l.y, planar[event.pos]->r.y), event.pos));
-                }
-                if (event.type == ADD) {
-                    t.insert(planar[event.pos]);
-                }
-                if (event.type == GET) {
-                    auto jt = vert.upper_bound(std::make_pair(queries[event.pos].y, planar.size()));
-                    if (jt != vert.begin()) {
-                        --jt;
-                        int i = jt->second;
-                        if (ge(std::max(planar[i]->l.y, planar[i]->r.y), queries[event.pos].y)) {
-                            ans[event.pos] = planar[i];
-                            continue;
-                        }
-                    }
-                    Edge *e = new Edge;
-                    e->l = e->r = queries[event.pos];
-                    auto it = t.upper_bound(e);
-                    if (it != t.begin())
-                        ans[event.pos] = *(--it);
-                    delete e;
-                }
-            }
-
-            for (Event event: events[x]) {
-                if (event.type != GET)
-                    continue;
-                if (ans[event.pos] != nullptr &&
-                    eq(ans[event.pos]->l.x, ans[event.pos]->r.x))
-                    continue;
-
-                Edge *e = new Edge;
-                e->l = e->r = queries[event.pos];
-                auto it = t.upper_bound(e);
-                delete e;
-                if (it == t.begin())
-                    e = nullptr;
-                else
-                    e = *(--it);
-                if (ans[event.pos] == nullptr) {
-                    ans[event.pos] = e;
-                    continue;
-                }
-                if (e == nullptr)
-                    continue;
-                if (e == ans[event.pos])
-                    continue;
-                if (id[ans[event.pos]->r.x] == x) {
-                    if (id[e->l.x] == x) {
-                        if (gt(e->l.y, ans[event.pos]->r.y))
-                            ans[event.pos] = e;
-                    }
-                } else {
-                    ans[event.pos] = e;
-                }
-            }
-        }
-        return ans;
-    }
-
-    struct DCEL {
-        struct Edge {
-            pt origin;
-            Edge *nxt = nullptr;
-            Edge *twin = nullptr;
-            int face{};
-        };
-        std::vector<Edge *> body;
-    };
-
-    std::vector<std::pair<int, int>> point_location(DCEL planar, std::vector<pt> queries) {
-        std::vector<std::pair<int, int>> ans(queries.size());
-        std::vector<Edge *> planar2;
-        std::map<intptr_t, int> pos;
-        std::map<intptr_t, int> added_on;
-        int n = planar.body.size();
-        for (int i = 0; i < n; i++) {
-            if (planar.body[i]->face > planar.body[i]->twin->face)
-                continue;
-            Edge *e = new Edge;
-            e->l = planar.body[i]->origin;
-            e->r = planar.body[i]->twin->origin;
-            added_on[(intptr_t) e] = i;
-            pos[(intptr_t) e] =
-                    lt(planar.body[i]->origin.x, planar.body[i]->twin->origin.x)
-                    ? planar.body[i]->face
-                    : planar.body[i]->twin->face;
-            planar2.push_back(e);
-        }
-        auto res = sweepline(planar2, queries);
-        for (int i = 0; i < (int) queries.size(); i++) {
-            if (res[i] == nullptr) {
-                ans[i] = std::make_pair(1, -1);
-                continue;
-            }
-            pt p = queries[i];
-            pt l = res[i]->l, r = res[i]->r;
-            if (eq(p.cross(l, r), 0) && le(p.dot(l, r), 0)) {
-                ans[i] = std::make_pair(0, added_on[(intptr_t) res[i]]);
-                continue;
-            }
-            ans[i] = std::make_pair(1, pos[(intptr_t) res[i]]);
-        }
-        for (auto e: planar2)
-            delete e;
-        return ans;
-    }
-
-} // namespace p_loc
+}
 
 int main() {
-    auto data = read_csv("output_data_3.csv");
+    auto ways_arr = get_ways();
 
-    int i = 1;
-    while (i < data.size()) {
-        auto id = data[i][1];
-
-        std::vector<dPoint> coord;
-        while (i < data.size() and id == data[i][1]) {
-            coord.push_back({std::stod(data[i][3]), std::stod(data[i][4])});
-            i += 1;
+    double min_lat = 90, min_lon = 180;
+    double max_lat = -90, max_lon = -180;
+    for (auto &temp_way: ways_arr) {
+        for (auto &temp_node: temp_way.seq) {
+            min_lat = std::min(min_lat, temp_node.lat);
+            max_lat = std::max(max_lat, temp_node.lat);
+            min_lon = std::min(min_lon, temp_node.lon);
+            max_lon = std::max(max_lon, temp_node.lon);
         }
-
-        auto tri_data = triangulation(coord);
-        std::cout << tri_data.size() << " ";
     }
 
+    int n_lat = 35 * 100;
+    int n_lon = 214 * 100;
+    double alpha = 0.01;
 
-//    std::vector<dPoint> coord = {
-//            {1,    7},
-//            {3,    1},
-//            {8,    5},
-//            {10,   2},
-//            {13,   11},
-//            {6,    10},
-//            {4,    6},
-//            {2.2,  5.5},
-//            {4.2,  -0.5},
-//            {9.2,  3.5},
-//            {11.2, 0.5},
-//            {14.2, 9.5},
-//            {7.2,  8.5},
-//            {5.2,  4.5}
-//    };
-//
-//    auto tri_data = triangulation(coord);
+    double dlat = (max_lat - min_lat) / n_lat * (1 + alpha / 100);
+    double dlon = (max_lon - min_lon) / n_lon * (1 + alpha / 100);
+
+    double elev = 7, azim = 122;
+    double height = 3;
+    height = height / (2 * M_PI * 6378 * 1000 / 360);
+
+    Grid grid(n_lon, n_lat);
+
+    grid_filling(grid, ways_arr, min_lat, min_lon, dlat, dlon, elev, azim, height, n_lon, n_lat);
+
+//    grid.print_grid();
+
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
+    std::cout << duration.count() / (1000 * 1000 * 1000) << "."
+              << duration.count() / (1000 * 1000) % 1000 << " "
+              << duration.count() / 1000 % 1000 << " "
+              << duration.count() % 1000 << "s" << std::endl;
 }
