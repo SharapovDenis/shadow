@@ -1,28 +1,35 @@
-#include <iostream>
-
-#include <thread>
-
-#include <vector>
-#include <map>
-
-#include "csv.hpp"
-#include "solar.hpp"
 #include "grid.hpp"
+#include "bd.hpp"
 
+#include <iostream>
 #include <chrono>
+#include <iomanip>
 
-typedef struct node {
-    unsigned long long int id;
-    double lat;
-    double lon;
-    std::map<std::string, std::string> tag;
-} nodes;
+#include <fstream>
 
-typedef struct way {
-    unsigned long long int id;
-    std::vector<nodes> seq;
-    std::map<std::string, std::string> tag;
-} ways;
+std::vector<std::vector<std::string>> read_csv(const std::string &filename) {
+    std::fstream file("/home/maxim/Рабочий стол/code/shadows/shadows_calc/" + filename, std::ios::in);
+
+    if (not file.is_open())
+        std::perror("Can't open file");
+
+    std::vector<std::vector<std::string>> data;
+    std::vector<std::string> row;
+    std::string line, word, temp;
+
+    while (getline(file, line)) {
+        row.clear();
+
+        std::istringstream line_stream(line);
+
+        while (getline(line_stream, word, ','))
+            row.push_back(word);
+
+        data.push_back(row);
+    }
+
+    return data;
+}
 
 std::vector<ways> get_ways() {
     auto data = read_csv("output_data.csv");
@@ -59,113 +66,20 @@ std::vector<ways> get_ways() {
     return ways_arr;
 }
 
-/**
- * y (lat)
- * ^
- * |
- * |
- * |
- * |
- * |
- * | - - - - - - - > x (lon)
- */
-void grid_filling(Grid &grid, std::vector<ways> &ways_arr, double min_lat, double min_lon, double dlat, double dlon,
-                  double elev, double azim, double height, int n_lon, int n_lat, int start_ind, int final_ind) {
-    for (int j = start_ind; j < final_ind; j++) {
-        auto temp_way = ways_arr[j];
-
-        double dlat_shadow = (-height * std::stoi(temp_way.tag["levels"]) * cos(to_rad(azim)) / tan(to_rad(elev)));
-        double dlon_shadow = (-height * std::stoi(temp_way.tag["levels"]) * sin(to_rad(azim)) / tan(to_rad(elev)));
-
-        int dx_shadow = (int) round(dlat_shadow / dlat);
-        int dy_shadow = (int) round(dlon_shadow / dlon);
-
-        for (int i = 1; i < temp_way.seq.size(); i++) {
-            double lat1 = temp_way.seq[i - 1].lat;
-            double lon1 = temp_way.seq[i - 1].lon;
-            double lat2 = temp_way.seq[i].lat;
-            double lon2 = temp_way.seq[i].lon;
-
-            int y1 = (int) ((lat1 - min_lat) / dlat);
-            int x1 = (int) ((lon1 - min_lon) / dlon);
-            int y2 = (int) ((lat2 - min_lat) / dlat);
-            int x2 = (int) ((lon2 - min_lon) / dlon);
-
-            auto marked = grid.plotLine({x1, y1}, {x2, y2});
-
-            for (auto p: marked) {
-                int x_new = p.x + dx_shadow;
-                x_new = std::max(0, x_new);
-                x_new = std::min(x_new, n_lon - 1);
-                int y_new = p.y + dy_shadow;
-                y_new = std::max(0, y_new);
-                y_new = std::min(y_new, n_lat - 1);
-
-                grid.plotLine(p, {x_new, y_new});
-            }
-        }
-    }
-}
-
-void test(int &x) {
-    std::cout << x << std::endl;
-}
-
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
     auto ways_arr = get_ways();
 
-    double min_lat = 90, min_lon = 180;
-    double max_lat = -90, max_lon = -180;
-    for (auto &temp_way: ways_arr) {
-        for (auto &temp_node: temp_way.seq) {
-            min_lat = std::min(min_lat, temp_node.lat);
-            max_lat = std::max(max_lat, temp_node.lat);
-            min_lon = std::min(min_lon, temp_node.lon);
-            max_lon = std::max(max_lon, temp_node.lon);
-        }
-    }
-
-    int n_lat = 35 * 100;
-    int n_lon = 214 * 100;
-    double alpha = 0.01;
-
-    double dlat = (max_lat - min_lat) / n_lat * (1 + alpha / 100);
-    double dlon = (max_lon - min_lon) / n_lon * (1 + alpha / 100);
-
-    double elev = 7, azim = 122;
-    double height = 3;
-    height = height / (2 * M_PI * 6378 * 1000 / 360);
-
-    Grid grid(n_lon, n_lat);
-
-    int n_threads = 8;
-    std::vector<std::thread> threads;
-
-    for (int i = 0; i < n_threads; i++) {
-        int start_ind = i * (int) ways_arr.size() / n_threads;
-        int final_ind = (i + 1) * (int) ways_arr.size() / n_threads;
-
-        if (i == n_threads - 1)
-            final_ind = (int) ways_arr.size();
-
-        threads.emplace_back(grid_filling, std::ref(grid), std::ref(ways_arr), min_lat, min_lon, dlat, dlon, elev, azim,
-                             height, n_lon, n_lat, start_ind, final_ind);
-    }
-
-    for (auto &th : threads) {
-        th.join();
-    }
-
-//    grid_filling(grid, ways_arr, min_lat, min_lon, dlat, dlon, elev, azim, height, n_lon, n_lat);
-
+    double step = 1;
+    Grid grid(ways_arr, step);
+    grid.fillIn();
 //    grid.print_grid();
 
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration_cast<std::chrono::nanoseconds>(stop - start);
     std::cout << duration.count() / (1000 * 1000 * 1000) << "."
-              << duration.count() / (1000 * 1000) % 1000 << " "
-              << duration.count() / 1000 % 1000 << " "
-              << duration.count() % 1000 << "s" << std::endl;
+              << std::setfill('0') << std::setw(3) << duration.count() / (1000 * 1000) % 1000 << " "
+              << std::setfill('0') << std::setw(3) << duration.count() / 1000 % 1000 << " "
+              << std::setfill('0') << std::setw(3) << duration.count() % 1000 << "s" << std::endl;
 }
