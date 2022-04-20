@@ -30,8 +30,8 @@ Grid::Grid(std::vector<ways> &ArrOfWays, double gridStep) : waysArr{ArrOfWays}, 
     n_x = n_lon;
     n_y = n_lat;
 
-    dlat = (max_lat - min_lat) / n_lat * (1 + alpha / 100);
-    dlon = (max_lon - min_lon) / n_lon * (1 + alpha / 100);
+    dlat = (max_lat - min_lat) / n_lat;
+    dlon = (max_lon - min_lon) / n_lon;
 
     for (int i = 0; i < n_y; i++) {
         std::vector<int> temp(n_x, 0);
@@ -151,6 +151,11 @@ void Grid::_fillIn(int start_ind, int final_ind) {
             int x1 = (int) ((lon1 - min_lon) / dlon);
             int y2 = (int) ((lat2 - min_lat) / dlat);
             int x2 = (int) ((lon2 - min_lon) / dlon);
+
+            y1 = std::min(y1, n_y - 1);
+            x1 = std::min(x1, n_x - 1);
+            y2 = std::min(y2, n_y - 1);
+            x2 = std::min(x2, n_x - 1);
 
             auto marked = plotLine({x1, y1}, {x2, y2});
 

@@ -34,14 +34,12 @@ private:
     int n_x;
     int n_y;
 
-    double alpha = 0.01;
-
     double dlat;
     double dlon;
 
     double height = 3;
 
-    double elev = 10, azim = 120;
+    double elev = 1, azim = 120;
 
     std::vector<std::vector<int>> grid;
 
