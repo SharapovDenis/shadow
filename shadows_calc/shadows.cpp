@@ -5,8 +5,6 @@
 #include <chrono>
 #include <iomanip>
 
-#include <fstream>
-
 std::vector<std::vector<std::string>> read_csv(const std::string &filename) {
     std::fstream file("/home/maxim/Рабочий стол/code/shadows/shadows_calc/" + filename, std::ios::in);
 
@@ -31,16 +29,16 @@ std::vector<std::vector<std::string>> read_csv(const std::string &filename) {
     return data;
 }
 
-std::vector<ways> get_ways() {
+std::vector<way> get_ways() {
     auto data = read_csv("output_data.csv");
 
     way temp_way;
     node temp_node;
-    std::vector<ways> ways_arr;
+    std::vector<way> ways_arr;
 
     auto last_id = data[1][1];
     temp_way.id = std::stoi(data[1][1]);
-    temp_way.tag["levels"] = data[1][2];
+    temp_way.tags["levels"] = data[1][2];
     for (int i = 1; i < data.size(); i++) {
 
         if (data[i][1] != last_id) {
@@ -48,7 +46,7 @@ std::vector<ways> get_ways() {
 
             temp_way = {};
             temp_way.id = std::stoi(data[i][1]);
-            temp_way.tag["levels"] = data[i][2];
+            temp_way.tags["levels"] = data[i][2];
 
             last_id = data[i][1];
         }
@@ -69,11 +67,13 @@ std::vector<ways> get_ways() {
 int main() {
     auto start = std::chrono::high_resolution_clock::now();
 
-    auto ways_arr = get_ways();
+    buildings_receive_test();
 
-    double step = 1.5;
-    Grid grid(ways_arr, step);
-    grid.fillIn();
+//    auto ways_arr = get_ways();
+
+//    double step = 1.5;
+//    Grid grid(ways_arr, step);
+//    grid.fillIn();
 //    grid.print_grid();
 
     auto stop = std::chrono::high_resolution_clock::now();
