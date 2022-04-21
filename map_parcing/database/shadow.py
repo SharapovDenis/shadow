@@ -10,6 +10,14 @@ def file_reader(f):
     
 
 def map_receive(url: str, query: str, save_to: str):
+    
+    # # Create target Directory if don't exist
+    # if not os.path.exists(dirName):
+    #     os.mkdir(dirName)
+    #     print("Directory " , dirName ,  " Created ")
+    # else:    
+    #     print("Directory " , dirName ,  " already exists")
+    
     response = requests.get(url, params={'data': query})
     print("Response is received. Ready to write a file")
     with open(save_to, "w") as outfile:
@@ -52,7 +60,6 @@ def db_insert(db_name: str, json_file: str):
                     cur.execute("INSERT INTO node_tags VALUES (?, ?, ?)", (node_id, tag_key, tag_val))
         if(x["type"] == "way"):
             way_id = int(x["id"])
-            cur.execute("INSERT INTO ways VALUES (?)", (way_id,))
             if('tags' in x.keys()):
                 for k in x['tags'].keys():
                     tag_key = k
@@ -61,10 +68,9 @@ def db_insert(db_name: str, json_file: str):
             if('nodes' in x.keys()):
                 for j in range(len(x['nodes'])):
                     node_id = int(x['nodes'][j])
-                    cur.execute("INSERT INTO way_nodes VALUES (?, ?, ?)", (way_id, node_id, j))
+                    cur.execute("INSERT INTO ways VALUES (?, ?, ?)", (way_id, node_id, j))
         if(x["type"] == "relation"):
             rel_id = int(x["id"])
-            cur.execute("INSERT INTO relations VALUES (?)", (rel_id,))
             if('tags' in x.keys()):
                 for k in x['tags'].keys():
                     tag_key = k
@@ -75,10 +81,9 @@ def db_insert(db_name: str, json_file: str):
                     member_type = x['members'][j]['type']
                     member_id = int(x['members'][j]['ref'])
                     member_role = x['members'][j]['role']
-                    cur.execute("INSERT INTO rel_members VALUES (?, ?, ?, ?, ?)", (rel_id, member_type, member_id, member_role, j))
+                    cur.execute("INSERT INTO relations VALUES (?, ?, ?, ?, ?)", (rel_id, member_type, member_id, member_role, j))
     
     j_file.close()
     con.commit()
     cur.close()
     con.close()
-    
