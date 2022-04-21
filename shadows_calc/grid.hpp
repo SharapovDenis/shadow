@@ -1,7 +1,7 @@
 #pragma once
 
 #include <vector>
-#include "bd.hpp"
+#include "db.hpp"
 
 struct iPnt {
     int x;
@@ -22,7 +22,7 @@ struct iPnt {
 class Grid {
 private:
 
-    std::vector<ways> &waysArr;
+    std::vector<way> &waysArr;
 
     double step;
 
@@ -47,7 +47,7 @@ public:
 
 //    Grid();
 
-    Grid(std::vector<ways> &ArrOfWays, double gridStep);
+    Grid(std::vector<way> &ArrOfWays, double gridStep);
 
     void plot(iPnt p, int value);
 

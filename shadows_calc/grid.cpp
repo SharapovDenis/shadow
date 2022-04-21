@@ -1,6 +1,6 @@
 #include "grid.hpp"
 #include "solar.hpp"
-#include "bd.hpp"
+#include "db.hpp"
 
 #include <iostream>
 #include <cmath>
@@ -8,7 +8,7 @@
 
 //Grid::Grid() = default;
 
-Grid::Grid(std::vector<ways> &ArrOfWays, double gridStep) : waysArr{ArrOfWays}, step{gridStep} {
+Grid::Grid(std::vector<way> &ArrOfWays, double gridStep) : waysArr{ArrOfWays}, step{gridStep} {
     min_lat = 90;
     max_lat = -90;
     min_lon = 180;

@@ -1,5 +1,5 @@
 #include "grid.hpp"
-#include "bd.hpp"
+#include "db.hpp"
 
 #include <iostream>
 #include <chrono>
@@ -71,7 +71,7 @@ int main() {
 
     auto ways_arr = get_ways();
 
-    double step = 1;
+    double step = 1.5;
     Grid grid(ways_arr, step);
     grid.fillIn();
 //    grid.print_grid();
