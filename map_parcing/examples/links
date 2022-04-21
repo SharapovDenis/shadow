@@ -1,4 +1,8 @@
 https://www.w3schools.com/python/python_mysql_select.asp
 
+SELECT COUNT (*) FROM sqlite_schema WHERE type = 'table';
+
 TO DO:
 1) нарисовать db;
+2) сделать VIEW buildings;
+3) подумать над разными VIEW (например, парки);
