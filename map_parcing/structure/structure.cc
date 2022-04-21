@@ -86,8 +86,8 @@ int buildings_receive(const char *db_path, string lat_low, string lon_left, stri
     
     pattern_nodes = "SELECT nodes.node_id, nodes.lat, nodes.lon "
                       "FROM nodes "
-                      "JOIN way_nodes ON way_nodes.node_id = nodes.node_id "
-                      "WHERE way_nodes.way_id = ";
+                      "JOIN ways ON ways.node_id = nodes.node_id "
+                      "WHERE ways.way_id = ";
 
     cout << "Openning db " + string(db_path) + ": ";
     
@@ -326,13 +326,15 @@ void buildings_receive_test() {
 
 int main() {
 
-    // buildings_receive_test();
+    buildings_receive_test();
     // neighbours_receive("../database/shadow.db", "1540431697", nghb);
-    GraphNode a = getNode(1540431697);
-    cout.precision(10);
+    // GraphNode a = getNode(1540431697);
+    // cout.precision(10);
 
-    cout << a.lat << endl;
-    cout << a.lon << endl;
+    // cout << a.lat << endl;
+    // cout << a.lon << endl;
+
+
 
 	return 0;
 }
