@@ -1,0 +1,1 @@
+WITH mid AS ( SELECT node_id, LAG(node_id, 1, 0) OVER (ORDER BY seq_id) pv, LEAD(node_id, 1, 0) OVER (ORDER BY seq_id) nt FROM ways WHERE way_id = 140643396) SELECT pv, nt FROM mid WHERE node_id = 1540431697;
