@@ -6,6 +6,8 @@
 #include <sqlite3.h>
 #include <stdio.h>
 
+#include "dejkstra.hpp"
+
 using namespace std;
 
 /*
@@ -49,18 +51,15 @@ struct way {
 };
 
 struct mate {
-    unsigned long long int          id;
-    int                             fine;
+    unsigned long long int          prev;
+    unsigned long long int          next;
+    string                          type;
 };
 
 struct GraphNode {
     double lat;
     double lon;
 };
-
-int classway(uint64_t way_id) {
-    return 1;
-}
 
 int buildings_receive(const char *db_path, string lat_low, string lon_left, string lat_up, string lon_right, vector<way> &build) {
 
@@ -75,19 +74,18 @@ int buildings_receive(const char *db_path, string lat_low, string lon_left, stri
 
     between = "(lat BETWEEN " + lat_low + " AND " + lat_up + ")" + " AND (lon BETWEEN " + lon_left + " AND " + lon_right + ")";
 
-    query = 
-        "SELECT way_id "
-        "FROM WayBuildings "
-        "WHERE tag_key = 'building' AND " + between + " GROUP BY way_id;";
+    query = "SELECT way_id "
+            "FROM WayBuildings "
+            "WHERE tag_key = 'building' AND " + between + " GROUP BY way_id;";
 
     pattern_tags = "SELECT way_tags.tag_key, way_tags.tag_val "
-                     "FROM way_tags "
-                     "WHERE way_tags.tag_key = 'building:levels' AND way_tags.way_id = ";
+                   "FROM way_tags "
+                   "WHERE way_tags.tag_key = 'building:levels' AND way_tags.way_id = ";
     
     pattern_nodes = "SELECT nodes.node_id, nodes.lat, nodes.lon "
-                      "FROM nodes "
-                      "JOIN ways ON ways.node_id = nodes.node_id "
-                      "WHERE ways.way_id = ";
+                    "FROM nodes "
+                    "JOIN ways ON ways.node_id = nodes.node_id "
+                    "WHERE ways.way_id = ";
 
     cout << "Openning db " + string(db_path) + ": ";
     
@@ -106,7 +104,6 @@ int buildings_receive(const char *db_path, string lat_low, string lon_left, stri
         cerr << "failed preparation sql data to binary" << endl;
 		return 1;
 	}
-
 
     cout << "selecting ways by coordinates: ";
 
@@ -171,8 +168,8 @@ int buildings_receive(const char *db_path, string lat_low, string lon_left, stri
 int neighbours_receive(const char *db_path, string node_id, vector<mate> &mates) {
 
     sqlite3 *db;
-	sqlite3_stmt *stmt;
-    string query, withas, mid_select;
+	sqlite3_stmt *stmt, *stmt1;
+    string query, withas, mid_select, query_tag;
     vector<string> ways;
     string mid_way;
     int i, flag;
@@ -198,7 +195,6 @@ int neighbours_receive(const char *db_path, string node_id, vector<mate> &mates)
 		return 1;
 	}
 
-
     cout << "selecting ways by node_id: ";
 
 	while(sqlite3_step(stmt) != SQLITE_DONE) {
@@ -211,16 +207,41 @@ int neighbours_receive(const char *db_path, string node_id, vector<mate> &mates)
     sqlite3_finalize(stmt);
 
     for(i = 0; i < ways.size(); ++i) {
+        mid_mate.prev = 0;
+        mid_mate.next = 0;
+        mid_mate.type = "";
+
         withas = "WITH mid AS ( "
-                    "SELECT node_id, " 
-                    "LAG(node_id, 1, 0) OVER (ORDER BY seq_id) pv, "
-                    "LEAD(node_id, 1, 0) OVER (ORDER BY seq_id) nt "
-                    "FROM ways "
-                    "WHERE way_id = " + ways[i] + ") ";
+                 "SELECT node_id, " 
+                 "LAG(node_id, 1, 0) OVER (ORDER BY seq_id) pv, "
+                 "LEAD(node_id, 1, 0) OVER (ORDER BY seq_id) nt "
+                 "FROM ways "
+                 "WHERE way_id = " + ways[i] + ") ";
+                    
         mid_select = "SELECT pv, nt "
                      "FROM mid "
                      "WHERE node_id = " + node_id + ";";
+
         query = withas + mid_select;
+
+        query_tag = "SELECT tag_val "
+                    "FROM way_tags "
+                    "WHERE tag_key = 'highway' AND way_id = " + ways[i] + ";";
+
+        flag = sqlite3_prepare_v2(db, query_tag.c_str(), -1, &stmt1, NULL);
+
+        if (flag != SQLITE_OK) {
+            cerr << "failed preparation sql data to binary" << endl;
+            return 1;
+        }
+
+        while(sqlite3_step(stmt1) != SQLITE_DONE) {
+            //////////////////////////////////////////////////////////////////////////////////////////////////////////
+            mid_mate.type = string((char *) sqlite3_column_text(stmt1, 0));
+            //////////////////////////////////////////////////////////////////////////////////////////////////////////
+        }
+
+        cout << "way_id: " << ways[i] + " " << "type: " << mid_mate.type << endl;
 
         flag = sqlite3_prepare_v2(db, query.c_str(), -1, &stmt, NULL);
 
@@ -230,14 +251,14 @@ int neighbours_receive(const char *db_path, string node_id, vector<mate> &mates)
         }
 
         while(sqlite3_step(stmt) != SQLITE_DONE) {
-            mid_mate.id = sqlite3_column_int64(stmt, 1);
-            mates.push_back(mid_mate);
-            mid_mate.id = sqlite3_column_int64(stmt, 2);
+            mid_mate.prev = sqlite3_column_int64(stmt, 0);
+            mid_mate.next = sqlite3_column_int64(stmt, 1);
             mates.push_back(mid_mate);
         }
-
         sqlite3_finalize(stmt);
+        sqlite3_finalize(stmt1);
     }
+    sqlite3_close(db);
 }
 
 vector<mate> getadjacencyMatrix(uint64_t node_id) {
@@ -283,7 +304,8 @@ int node_coord(const char *db_path, string node_id, node &ret) {
     }
     
     sqlite3_finalize(stmt);
-        
+
+    sqlite3_close(db);    
     return 0;
 }
 
@@ -296,7 +318,6 @@ GraphNode getNode(uint64_t node_id) {
     ret.lon = mid.lon;
     return ret;
 }
-
 
 void buildings_receive_test() {
     string lat_low, lon_left, lat_up, lon_right;
@@ -322,11 +343,9 @@ void buildings_receive_test() {
     }
 }
 
-
-
 int main() {
 
-    buildings_receive_test();
+    // buildings_receive_test();
     // neighbours_receive("../database/shadow.db", "1540431697", nghb);
     // GraphNode a = getNode(1540431697);
     // cout.precision(10);
@@ -334,7 +353,12 @@ int main() {
     // cout << a.lat << endl;
     // cout << a.lon << endl;
 
+    vector<mate> a = getadjacencyMatrix(1540431697);
 
+    for(auto& x: a) {
+        cout << x.prev << " " << x.next << endl;
+    }
 
 	return 0;
 }
+
