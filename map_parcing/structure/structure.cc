@@ -240,7 +240,7 @@ std::vector<graph::weightNode> getadjacencyMatrix(uint64_t Node) {
     graph::weightNode mid_node;
     int i, fine;
     
-    neighbours_receive("../database/shadow.db", node_id, mates);
+    Request::neighbours_receive("../database/shadow.db", node_id, mates);
 
     for(i = 0; i < mates.size(); ++i) {
 
@@ -304,7 +304,7 @@ graph::graphNode getNode(uint64_t Node) {
     std::string node_id = std::to_string(Node);
     graph::graphNode gr_node;
     Request::node mid_node;
-    node_coord("../database/shadow.db", node_id, mid_node);
+    Request::node_coord("../database/shadow.db", node_id, mid_node);
     gr_node.x = mid_node.lat;
     gr_node.y = mid_node.lon;
     return gr_node;
@@ -320,7 +320,7 @@ void buildings_receive_test() {
 
     std::vector<Request::way> a;
 
-    buildings_receive("../database/shadow.db", lat_low, lon_left, lat_up, lon_right, a);
+    Request::buildings_receive("../database/shadow.db", lat_low, lon_left, lat_up, lon_right, a);
     std::cout.precision(8);
     for(int i = 0; i < a.size(); ++i) {
         for(int j = 0; j < a[i].seq.size(); ++j) {

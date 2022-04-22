@@ -80,7 +80,7 @@ std::map<std::string, int> price_list = {
     {"", UNDEFINED_PATH}
 };
 
-struct Request {
+namespace Request {
 
     struct node {
         unsigned long long int                  id;
