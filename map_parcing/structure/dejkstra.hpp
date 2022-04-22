@@ -28,9 +28,7 @@ struct graph {
 	struct weightNode {
 		uint64_t index;
 		int fineness;
-	};
-
-    std::string db_path;
+};
 	
 	std::vector<graphShadingEdge> Edges;
 	std::vector<graphNode> Nodes;
@@ -44,11 +42,3 @@ struct graph {
 	graph();
     ~graph();
 };
-
-graph::graph(): db_path("../database/shadow.db") {
-
-}
-
-graph::~graph() {
-    
-}
