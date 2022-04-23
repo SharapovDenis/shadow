@@ -28,14 +28,14 @@ if the query returns an integer but the sqlite3_column_text() interface is used 
 */
 
 
-int buildings_receive(const char *db_path, std::string lat_low, std::string lon_left, std::string lat_up, std::string lon_right, std::vector<Request::way> &build) {
+int resp::buildings_receive(const char *db_path, std::string lat_low, std::string lon_left, std::string lat_up, std::string lon_right, std::vector<resp::way> &build) {
 
     sqlite3 *db;
 	sqlite3_stmt *stmt, *stmt1, *stmt2;
     std::string query, query_tags, query_nodes, pattern_tags, pattern_nodes;
     std::string between, tag_key, tag_val;
-    Request::way mid_way;
-    Request::node mid_node;
+    resp::way mid_way;
+    resp::node mid_node;
     unsigned int i, counter = 0;
     int flag;
 
@@ -132,7 +132,7 @@ int buildings_receive(const char *db_path, std::string lat_low, std::string lon_
     return 0;
 }
 
-int neighbours_receive(const char *db_path, std::string node_id, std::vector<Request::mate> &mates) {
+int resp::neighbours_receive(const char *db_path, std::string node_id, std::vector<resp::mate> &mates) {
 
     sqlite3 *db;
 	sqlite3_stmt *stmt, *stmt1;
@@ -140,7 +140,7 @@ int neighbours_receive(const char *db_path, std::string node_id, std::vector<Req
     std::vector<std::string> ways;
     std::string mid_way;
     int i, flag;
-    Request::mate mid_mate;
+    resp::mate mid_mate;
 
     query = "SELECT way_id FROM ways WHERE node_id = " + node_id + ";";
 
@@ -225,7 +225,7 @@ int neighbours_receive(const char *db_path, std::string node_id, std::vector<Req
     return 0;
 }
 
-int define_fine(std::string path_type) {
+int resp::define_fine(std::string path_type) {
     if(price_list.count(path_type) > 0) {
         return price_list[path_type];
     }
@@ -236,15 +236,15 @@ std::vector<graph::weightNode> getadjacencyMatrix(uint64_t Node) {
 
     std::vector<graph::weightNode> nodes;
     std::string node_id = std::to_string(Node);
-    std::vector<Request::mate> mates;
+    std::vector<resp::mate> mates;
     graph::weightNode mid_node;
     int i, fine;
     
-    Request::neighbours_receive("../database/shadow.db", node_id, mates);
+    neighbours_receive("../database/shadow.db", node_id, mates);
 
     for(i = 0; i < mates.size(); ++i) {
 
-        fine = define_fine(mates[i].path_type);
+        fine = resp::define_fine(mates[i].path_type);
         if(mates[i].prev != 0) {
             mid_node.index = mates[i].prev;
             mid_node.fineness = fine;
@@ -259,12 +259,12 @@ std::vector<graph::weightNode> getadjacencyMatrix(uint64_t Node) {
     return nodes;
 }
 
-int node_coord(const char *db_path, std::string node_id, Request::node &ret) {
+int resp::node_coord(const char *db_path, std::string node_id, resp::node &ret) {
 
     sqlite3 *db;
 	sqlite3_stmt *stmt;
     std::string query;
-    Request::node mid_node;
+    resp::node mid_node;
     int i, flag;
 
     query = "SELECT nodes.lat, nodes.lon "
@@ -303,8 +303,8 @@ int node_coord(const char *db_path, std::string node_id, Request::node &ret) {
 graph::graphNode getNode(uint64_t Node) {
     std::string node_id = std::to_string(Node);
     graph::graphNode gr_node;
-    Request::node mid_node;
-    Request::node_coord("../database/shadow.db", node_id, mid_node);
+    resp::node mid_node;
+    node_coord("../database/shadow.db", node_id, mid_node);
     gr_node.x = mid_node.lat;
     gr_node.y = mid_node.lon;
     return gr_node;
@@ -318,9 +318,9 @@ void buildings_receive_test() {
     lat_up = "55.8322596";
     lon_right = "37.7582195";
 
-    std::vector<Request::way> a;
+    std::vector<resp::way> a;
 
-    Request::buildings_receive("../database/shadow.db", lat_low, lon_left, lat_up, lon_right, a);
+    buildings_receive("../database/shadow.db", lat_low, lon_left, lat_up, lon_right, a);
     std::cout.precision(8);
     for(int i = 0; i < a.size(); ++i) {
         for(int j = 0; j < a[i].seq.size(); ++j) {
@@ -369,4 +369,5 @@ int main() {
     3. Класс БД.
     4. не создавать бд при открытии
     5. map переписать в json?
+    6. пространство имён - проверить
 */

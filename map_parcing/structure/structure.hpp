@@ -80,7 +80,7 @@ std::map<std::string, int> price_list = {
     {"", UNDEFINED_PATH}
 };
 
-namespace Request {
+namespace resp {
 
     struct node {
         unsigned long long int                  id;
@@ -101,25 +101,22 @@ namespace Request {
         std::string                 path_type;      // way_tag for classifying roads
     };
 
-    int buildings_receive(const char *db_path, std::string lat_low, std::string lon_left, std::string lat_up, std::string lon_right, std::vector<Request::way> &build);
+    int buildings_receive(const char *db_path, std::string lat_low, std::string lon_left, std::string lat_up, std::string lon_right, std::vector<resp::way> &build);
 
-    int neighbours_receive(const char *db_path, std::string node_id, std::vector<Request::mate> &mates);
+    int neighbours_receive(const char *db_path, std::string node_id, std::vector<resp::mate> &mates);
 
     int define_fine(std::string path_type);
 
-    std::vector<graph::weightNode> getadjacencyMatrix(uint64_t Node);
-
-    int node_coord(const char *db_path, std::string node_id, Request::node &ret);
-
-    graph::graphNode getNode(uint64_t Node);
+    int node_coord(const char *db_path, std::string node_id, resp::node &ret);
 
     void buildings_receive_test();
 
-    void getadjacencyMatrix_test();
-
-    void getNode_test();
-
 };
+
+std::vector<graph::weightNode> getadjacencyMatrix(uint64_t Node);
+graph::graphNode getNode(uint64_t Node);
+void getadjacencyMatrix_test();
+void getNode_test();
 
 class DataBase {
 
